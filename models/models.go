@@ -58,6 +58,7 @@ func (t *Template) ToDTO() TemplateDTO {
 		Description: t.Description,
 		Type:        t.Type,
 		Category:    t.Category,
+		CreatedAt:   t.CreatedAt,
 		Fields:      fields,
 		Version:     latest,
 	}
@@ -90,6 +91,7 @@ type TemplateDTO struct {
 	Description string             `json:"description"`
 	Type        string             `json:"type"`
 	Category    string             `json:"category"`
+	CreatedAt   time.Time          `json:"created_at"`
 	Fields      []FieldDTO         `json:"fields"`
 	Version     TemplateVersionDTO `json:"version"`
 }
