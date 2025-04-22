@@ -1,0 +1,28 @@
+services:
+  template-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8085:8080"
+    environment:
+      - PORT=:8080
+      - DSN=host=postgres user=postgres password=secret dbname=templatedb port=5432 sslmode=disable
+      - ENV=dev
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:15
+    restart: always
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: templatedb  # ✅ DB is auto-created at startup
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
