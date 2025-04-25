@@ -211,3 +211,79 @@ func (h *HTTPHandler) PreviewTemplate(ctx *fiber.Ctx) error {
 		},
 	})
 }
+
+func (h *HTTPHandler) CreateHistory(ctx *fiber.Ctx) error {
+	var data models.TemplateDTO
+
+	if err := ctx.BodyParser(&data); err != nil {
+		log.Error().Err(err).Msg("failed to parse request body")
+		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "invalid request body",
+		})
+	}
+
+	userIDStr := ctx.Get("X-User-ID")
+	if userIDStr == "" {
+		log.Error().Msg("X-User-ID header is missing")
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "X-User-ID header is required",
+		})
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		log.Error().Err(err).Msg("error parsing X-User-ID header")
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid X-User-ID header",
+		})
+	}
+
+	if err := h.db.CreateHistory(data, userID); err != nil {
+		log.Error().Err(err).Msgf("failed to create history for %s", data.ID)
+		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "unexpected error",
+		})
+	}
+
+	log.Info().Str("user_id", userIDStr).Str("template_id", data.ID).Msg("template history saved")
+
+	return ctx.Status(fiber.StatusOK).JSON(models.Response{
+		Error: false,
+		Data:  nil,
+	})
+}
+
+func (h *HTTPHandler) GetHistory(ctx *fiber.Ctx) error {
+	userIDStr := ctx.Get("X-User-ID")
+	if userIDStr == "" {
+		log.Error().Msg("X-User-ID header is missing")
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "X-User-ID header is required",
+		})
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		log.Error().Err(err).Msg("error parsing X-User-ID header")
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid X-User-ID header",
+		})
+	}
+
+	log.Info().Msgf("user-id: %v", userID)
+
+	data, err := h.db.GetHistory(userID)
+	if err != nil {
+		log.Error().Err(err).Msgf("failed to get history for %s", userIDStr)
+		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "unexpected error",
+		})
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(models.Response{
+		Error: false,
+		Data: fiber.Map{
+			"history": data,
+		},
+	})
+}

@@ -85,6 +85,16 @@ type TemplateField struct {
 	CreatedAt  time.Time
 }
 
+type TemplateHistory struct {
+	gorm.Model
+	ID           uuid.UUID `gorm:"type:uuid;primaryKey"`
+	UserID       uuid.UUID `gorm:"type:uuid;not null;index"`
+	TemplateID   uuid.UUID `gorm:"type:uuid;not null;index"`
+	Version      int       `gorm:"not null"`
+	TemplateName string    `gorm:"not null"`
+	UsedAt       time.Time `gorm:"autoCreateTime"`
+}
+
 type TemplateDTO struct {
 	ID          string             `json:"id"`
 	Name        string             `json:"name"`

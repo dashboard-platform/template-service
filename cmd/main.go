@@ -58,6 +58,8 @@ func main() {
 
 	app.Post("/templates", h.CreateTemplate)
 	app.Get("/templates", h.GetTemplates)
+	app.Post("/templates/history", h.CreateHistory)
+	app.Get("/templates/history", h.GetHistory)
 	app.Get("/templates/:id", h.GetTemplateByID)
 	app.Post("/templates/:id/preview", h.PreviewTemplate)
 

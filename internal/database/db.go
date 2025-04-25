@@ -85,6 +85,10 @@ func (d *Database) AutoMigrate() error {
 		return err
 	}
 
+	if err := d.db.AutoMigrate(&models.TemplateHistory{}); err != nil {
+		return err
+	}
+
 	d.db.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_template_version_unique ON template_versions (template_id, version);")
 	d.db.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_template_field_key ON template_fields (template_id, key);")
 
@@ -203,4 +207,32 @@ func (d *Database) GetTemplateByID(userIDStr, templateIDStr string) (models.Temp
 	}
 
 	return template, nil
+}
+
+func (d *Database) CreateHistory(template models.TemplateDTO, userID uuid.UUID) error {
+	templateID, err := uuid.Parse(template.ID)
+	if err != nil {
+		return err
+	}
+
+	data := models.TemplateHistory{
+		ID:           uuid.New(),
+		UserID:       userID,
+		TemplateID:   templateID,
+		TemplateName: template.Name,
+		Version:      template.Version.Version,
+	}
+
+	return d.db.Create(&data).Error
+}
+
+func (d *Database) GetHistory(userID uuid.UUID) ([]models.TemplateHistory, error) {
+	var history []models.TemplateHistory
+
+	err := d.db.Where("user_id = ?", userID).Find(&history).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return history, nil
 }
