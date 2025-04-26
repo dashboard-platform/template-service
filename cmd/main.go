@@ -44,24 +44,26 @@ func main() {
 		// Add security headers.
 		helmet.New(),
 
-		// Implement rate limiting.
-		limiter.New(limiter.Config{
-			Max:        20,
-			Expiration: 1 * time.Minute,
-		}),
-
 		// Add custom request logger middleware.
 		middleware.RequestLogger(httpLogger),
 	)
 
+	globalLimiter := limiter.New(limiter.Config{
+		Max:        20,
+		Expiration: 1 * time.Minute,
+	})
+
 	h := handler.New(db)
 
-	app.Post("/templates", h.CreateTemplate)
-	app.Get("/templates", h.GetTemplates)
-	app.Post("/templates/history", h.CreateHistory)
-	app.Get("/templates/history", h.GetHistory)
-	app.Get("/templates/:id", h.GetTemplateByID)
-	app.Post("/templates/:id/preview", h.PreviewTemplate)
+	app.Post("/templates", globalLimiter, h.CreateTemplate)
+	app.Get("/templates", globalLimiter, h.GetTemplates)
+	app.Post("/templates/history", globalLimiter, h.CreateHistory)
+	app.Get("/templates/history", globalLimiter, h.GetHistory)
+	app.Get("/templates/:id", globalLimiter, h.GetTemplateByID)
+	app.Post("/templates/:id/preview", limiter.New(limiter.Config{
+		Max:        1000,
+		Expiration: 1 * time.Minute,
+	}), h.PreviewTemplate)
 
 	// Start the HTTP server.
 	log.Info().Msgf("Template Service started on %s", c.Port)
