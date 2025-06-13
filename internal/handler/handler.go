@@ -212,6 +212,68 @@ func (h *HTTPHandler) PreviewTemplate(ctx *fiber.Ctx) error {
 	})
 }
 
+func (h *HTTPHandler) UpdateTemplate(ctx *fiber.Ctx) error {
+	templateID := ctx.Params("id")
+	if templateID == "" {
+		log.Error().Msg("template ID is missing")
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Template ID is required",
+		})
+	}
+
+	userID := ctx.Get("X-User-ID")
+	if userID == "" {
+		log.Error().Msg("X-User-ID header is missing")
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "X-User-ID header is required",
+		})
+	}
+
+	var body models.CreateTemplateAPI
+	if err := ctx.BodyParser(&body); err != nil {
+		log.Error().Msg("error parsing HTTP body request")
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "invalid body passed",
+		})
+	}
+
+	if err := h.db.UpdateTemplate(userID, templateID, body); err != nil {
+		log.Error().Msgf("error updating template: %v", err)
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "unexpected error occurred while updating template",
+		})
+	}
+
+	return ctx.SendStatus(fiber.StatusOK)
+}
+
+func (h *HTTPHandler) DeleteTemplate(ctx *fiber.Ctx) error {
+	templateID := ctx.Params("id")
+	if templateID == "" {
+		log.Error().Msg("template ID is missing")
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Template ID is required",
+		})
+	}
+
+	userID := ctx.Get("X-User-ID")
+	if userID == "" {
+		log.Error().Msg("X-User-ID header is missing")
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "X-User-ID header is required",
+		})
+	}
+
+	if err := h.db.DeleteTemplate(userID, templateID); err != nil {
+		log.Error().Msgf("error deleting template %s: %v", templateID, err)
+		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "error deleting template",
+		})
+	}
+
+	return ctx.SendStatus(fiber.StatusOK)
+}
+
 func (h *HTTPHandler) CreateHistory(ctx *fiber.Ctx) error {
 	var data models.TemplateDTO
 

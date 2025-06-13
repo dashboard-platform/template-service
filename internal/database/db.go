@@ -7,7 +7,10 @@ package database
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/dashboard-platform/template-service/models"
@@ -207,6 +210,104 @@ func (d *Database) GetTemplateByID(userIDStr, templateIDStr string) (models.Temp
 	}
 
 	return template, nil
+}
+
+func (d *Database) UpdateTemplate(userIDStr, templateIDStr string, input models.CreateTemplateAPI) error {
+	templateID, err := uuid.Parse(templateIDStr)
+	if err != nil {
+		return err
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		return err
+	}
+
+	if err := d.db.Unscoped().Where("template_id = ?", templateID).Delete(&models.TemplateField{}).Error; err != nil {
+		return err
+	}
+
+	return d.db.Transaction(func(tx *gorm.DB) error {
+		var template models.Template
+
+		if err := tx.
+			Where("id = ? AND user_id = ?", templateID, userID).
+			First(&template).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return fmt.Errorf("template not found or not owned by user")
+			}
+			return err
+		}
+
+		template.Name = input.Name
+		template.Description = input.Description
+
+		for _, f := range input.Fields {
+			if strings.TrimSpace(f.Key) == "" || strings.TrimSpace(f.Label) == "" {
+				return fmt.Errorf("key and/or label are missing")
+			}
+
+			field := models.TemplateField{
+				ID:         uuid.New(),
+				TemplateID: templateID,
+				Key:        f.Key,
+				Label:      f.Label,
+				Type:       f.Type,
+				Required:   f.Required,
+				CreatedAt:  time.Now(),
+			}
+
+			if field.Type == "" {
+				field.Type = "text" // default
+			}
+
+			if err := tx.Create(&field).Error; err != nil {
+				return err
+			}
+		}
+
+		if err := tx.Updates(&template).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
+}
+
+func (d *Database) DeleteTemplate(userIDStr, templateIDStr string) error {
+	return d.db.Transaction(func(tx *gorm.DB) error {
+		templateID, err := uuid.Parse(templateIDStr)
+		if err != nil {
+			return err
+		}
+
+		userID, err := uuid.Parse(userIDStr)
+		if err != nil {
+			return err
+		}
+
+		var template models.Template
+		if err := tx.Where("id = ? AND user_id = ?", templateID, userID).First(&template).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return fmt.Errorf("template not found or not owned by user")
+			}
+			return err
+		}
+
+		if err := tx.Where("template_id = ?", templateID).Delete(&models.TemplateVersion{}).Error; err != nil {
+			return err
+		}
+
+		if err := tx.Where("template_id = ?", templateID).Delete(&models.TemplateField{}).Error; err != nil {
+			return err
+		}
+
+		if err := tx.Delete(&template).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
 }
 
 func (d *Database) CreateHistory(template models.TemplateDTO, userID uuid.UUID) error {

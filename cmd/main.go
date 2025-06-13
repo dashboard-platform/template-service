@@ -60,11 +60,12 @@ func main() {
 	app.Post("/templates/history", globalLimiter, h.CreateHistory)
 	app.Get("/templates/history", globalLimiter, h.GetHistory)
 	app.Get("/templates/:id", globalLimiter, h.GetTemplateByID)
+	app.Post("/templates/:id/update", globalLimiter, h.UpdateTemplate)
+	app.Post("/templates/:id/delete", globalLimiter, h.DeleteTemplate)
 	app.Post("/templates/:id/preview", limiter.New(limiter.Config{
 		Max:        1000,
 		Expiration: 1 * time.Minute,
 	}), h.PreviewTemplate)
-
 	// Start the HTTP server.
 	log.Info().Msgf("Template Service started on %s", c.Port)
 	if err = app.Listen(c.Port); err != nil {
